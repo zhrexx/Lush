@@ -1,5 +1,3 @@
-#!/usr/bin/env lua
-
 local LPM = {
   config = {
     registry_url = "TODO: make a registry",
@@ -669,6 +667,9 @@ function LPM:run_command(cmd, args)
     os.execute("rm -rf " .. self.config.bundle_dir)
     os.execute("rm -f " .. self.config.output_file)
     return true
+  elseif cmd == "bundle" then 
+      self:log("info", "Bundling project")
+      self:compile_bundle();
   else
     self:log("error", "Unknown command: %s", cmd)
     self:log("info", "Available commands: init, install, add, remove, build, clean")
@@ -689,6 +690,7 @@ local function main(args)
     print("  remove NAME              Remove a dependency")
     print("  build                    Build the project")
     print("  clean                    Clean build artifacts")
+    print("  bundle                   Bundle a project");
     return 1
   end
   
