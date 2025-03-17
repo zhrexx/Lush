@@ -1,6 +1,6 @@
 local LPM = {
   config = {
-    registry_url = "TODO: make a registry",
+    registry_url = "https://zhrexx.github.io/files/lush_registry.json",
     install_dir = "lpm_packages/",
     bundle_dir = "lpm_bundle/",
     cache_dir = ".lpm_cache/",
@@ -240,40 +240,18 @@ function LPM:download(url, file)
   return self:write_file(file, content)
 end
 
-function LPM:calculate_hash(file)
-  local success, crypto = pcall(require, "crypto")
-  if success and crypto.digest then
-    local content = self:read_file(file)
-    if content then
-      return crypto.digest("sha256", content)
-    end
-    return nil
-  end
-  
-  local result = self:execute("sha256sum " .. file .. " | cut -d' ' -f1")
-  if result then
-    return result:match("^%s*(.-)%s*$")
-  end
-  return nil
-end
 
 function LPM:extract_archive(file, dest)
-  self:log("info", "Extracting %s to %s", file, dest)
+  -- self:log("info", "Extracting %s to %s", file, dest)
   
-  self:ensure_directory(dest)
-  
-  local success, tar = pcall(require, "minitar")
-  if success then
-    local content = self:read_file(file)
-    if content then
-      local success = tar.extract(content, dest)
-      if success then
-        return true
-      end
-    end
+  if not self:ensure_directory(dest) then
+    self:log("error", "Failed to create extraction directory: %s", dest)
+    return false
   end
   
-  local result = self:execute("tar -xf " .. file .. " -C " .. dest)
+  local cmd = string.format("tar -xf '%s' -C '%s'", file, dest)
+  local result = self:execute(cmd)
+  
   return result ~= nil
 end
 
@@ -395,7 +373,7 @@ function LPM:install_package(name, version, optional)
   self:ensure_directory(self.config.install_dir)
   self:ensure_directory(self.config.cache_dir)
   
-  local filename = name .. "-" .. version .. ".lpm"
+  local filename = name .. "-" .. version .. ".tar.gz"
   local cache_file = self.config.cache_dir .. filename
   
   if not self:file_exists(cache_file) then
@@ -403,17 +381,11 @@ function LPM:install_package(name, version, optional)
       return false
     end
     
-    local hash = self:calculate_hash(cache_file)
-    if hash ~= info.sha256 then
-      self:log("error", "Checksum mismatch for %s", filename)
-      os.remove(cache_file)
-      return false
-    end
   else
     self:log("debug", "Using cached version of %s", filename)
   end
   
-  if not self:extract_archive(cache_file, install_path) then
+  if not self:extract_archive(cache_file, self.config.install_dir) then
     return false
   end
   
